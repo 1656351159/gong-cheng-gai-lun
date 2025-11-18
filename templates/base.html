@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>材智通 · 智慧材料库</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">材智通</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto">
+            {% if current_user.is_authenticated %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.dashboard') }}">总览</a></li>
+            {% if current_user.role == 'admin' %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.categories') }}">材料类目</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.materials') }}">材料信息</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.stock') }}">库存</a></li>
+            {% elif current_user.role == 'technician' %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.inbound') }}">入库登记</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.stock') }}">库存</a></li>
+            {% elif current_user.role == 'student' %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.new_request') }}">发起领用</a></li>
+            {% endif %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main.list_requests') }}">领用记录</a></li>
+            {% endif %}
+          </ul>
+          {% if current_user.is_authenticated %}
+          <span class="navbar-text me-3">{{ current_user.username }} ({{ role_label if role_label else current_user.role }})</span>
+          <a class="btn btn-outline-light" href="{{ url_for('main.logout') }}">退出</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">发起领用</h5>
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">材料</label>
+            <select class="form-select" name="material_id" required>
+              {% for material in materials %}
+              <option value="{{ material.id }}">{{ material.name }}（库存：{{ material.current_stock }}）</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">数量</label>
+            <input type="number" class="form-control" name="quantity" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">用途</label>
+            <input class="form-control" name="purpose" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">课程/项目编号</label>
+            <input class="form-control" name="course_code">
+          </div>
+          <button class="btn btn-primary" type="submit">提交申请</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

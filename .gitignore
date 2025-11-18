@@ -20,3 +20,11 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+# Python virtual environments and bytecode
+.venv/
+__pycache__/
+*.pyc
+
+# Flask instance folder with SQLite database
+instance/

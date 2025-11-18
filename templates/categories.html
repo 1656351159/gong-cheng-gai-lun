@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">新增类目</h5>
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">名称</label>
+            <input name="name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">父级类目</label>
+            <select name="parent_id" class="form-select">
+              <option value="">无</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="btn btn-primary" type="submit">保存</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <h5>已创建的类目</h5>
+    <ul class="list-group">
+      {% for cat in categories %}
+      <li class="list-group-item">
+        {{ cat.name }}
+        {% if cat.parent %}<span class="text-muted">（父级：{{ cat.parent.name }}）</span>{% endif %}
+      </li>
+      {% else %}
+      <li class="list-group-item">暂无类目</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-md-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">新增入库记录</h5>
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">材料</label>
+            <select class="form-select" name="material_id" required>
+              {% for material in materials %}
+              <option value="{{ material.id }}">{{ material.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">数量</label>
+            <input type="number" class="form-control" name="quantity" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">供应商</label>
+            <input class="form-control" name="supplier">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">入库日期</label>
+            <input type="date" class="form-control" name="received_at">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">备注</label>
+            <textarea class="form-control" name="note"></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit">提交</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>材料</th>
+            <th>数量</th>
+            <th>供应商</th>
+            <th>日期</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in records %}
+          <tr>
+            <td>{{ record.id }}</td>
+            <td>{{ record.material.name }}</td>
+            <td>{{ record.quantity }}</td>
+            <td>{{ record.supplier }}</td>
+            <td>{{ record.received_at.strftime('%Y-%m-%d') if record.received_at else '' }}</td>
+            <td>{{ record.note }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center">暂无记录</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

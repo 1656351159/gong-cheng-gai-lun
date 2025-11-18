@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<h4 class="mb-3">库存总览</h4>
+<div class="mb-3">
+  <a class="btn btn-outline-primary" href="{{ url_for('main.export_stock') }}">导出库存 CSV</a>
+</div>
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>材料</th>
+        <th>规格</th>
+        <th>当前库存</th>
+        <th>单位</th>
+        <th>安全库存</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for material in materials %}
+      <tr class="{% if material.current_stock < material.safety_stock %}table-warning{% endif %}">
+        <td>{{ material.name }}</td>
+        <td>{{ material.specification }}</td>
+        <td>{{ material.current_stock }}</td>
+        <td>{{ material.unit }}</td>
+        <td>{{ material.safety_stock }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center">暂无材料</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

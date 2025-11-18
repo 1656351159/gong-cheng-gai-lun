@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>材智通 - 简易前端</title>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f6f7fb; }
+    header { background: #1677ff; color: #fff; padding: 14px 18px; }
+    h1 { margin: 0; font-size: 18px; }
+    .layout { display: flex; min-height: calc(100vh - 52px); }
+    nav { width: 200px; background: #fff; border-right: 1px solid #e5e5e5; padding: 12px; }
+    nav h3 { font-size: 14px; margin: 8px 0; }
+    nav button { width: 100%; margin: 4px 0; padding: 8px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; border-radius: 6px; }
+    nav button.active { background: #e6f4ff; border-color: #91caff; }
+    main { flex: 1; padding: 16px; }
+    .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row input, .row select, .row textarea { padding: 8px; border: 1px solid #d9d9d9; border-radius: 6px; min-width: 160px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #e5e5e5; padding: 8px; font-size: 14px; }
+    th { background: #fafafa; text-align: left; }
+    .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .tag.pending { background: #fff7e6; color: #d48806; }
+    .tag.approved { background: #f6ffed; color: #389e0d; }
+    .tag.rejected { background: #fff1f0; color: #cf1322; }
+    .muted { color: #888; }
+    .flex-between { display: flex; align-items: center; justify-content: space-between; }
+    .btn { padding: 8px 12px; border-radius: 6px; border: 1px solid #1677ff; background: #1677ff; color: #fff; cursor: pointer; }
+    .btn.secondary { background: #fff; color: #1677ff; }
+    .warning { color: #cf1322; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header class="flex-between">
+    <h1>材智通 · 简易演示前端</h1>
+    <div id="user-info" class="muted">未登录</div>
+  </header>
+  <div class="layout">
+    <nav>
+      <h3>导航</h3>
+      <div id="menu"></div>
+      <button id="btn-logout">退出登录</button>
+    </nav>
+    <main id="content">
+      <div class="card">
+        <h3>登录</h3>
+        <div class="row">
+          <input id="login-username" placeholder="用户名，如 admin/lab/stu">
+          <input id="login-password" placeholder="密码" type="password" value="123456">
+          <button class="btn" id="btn-login">登录</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const apiBase = '';
+    let token = '';
+    let role = '';
+    const menuItems = [
+      { key: 'categories', label: '类目管理', roles: ['admin'] },
+      { key: 'materials', label: '材料管理', roles: ['admin'] },
+      { key: 'inbound', label: '入库', roles: ['admin','lab'] },
+      { key: 'stock', label: '库存', roles: ['admin','lab'] },
+      { key: 'requests', label: '领用审核', roles: ['admin','lab'] },
+      { key: 'myRequests', label: '我的领用', roles: ['student'] },
+      { key: 'export', label: '导出', roles: ['admin'] },
+    ];
+
+    function setContent(html) { document.getElementById('content').innerHTML = html; }
+    function notice(msg) { alert(msg); }
+
+    async function api(path, options={}) {
+      const headers = options.headers || {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      headers['Content-Type'] = 'application/json';
+      const res = await fetch(apiBase + path, { ...options, headers });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || res.statusText);
+      }
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) return res.json();
+      return res.text();
+    }
+
+    async function login() {
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!username || !password) return notice('请输入用户名和密码');
+      const data = await api('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+      });
+      token = data.token;
+      role = username === 'admin' ? 'admin' : username === 'lab' ? 'lab' : 'student';
+      document.getElementById('user-info').textContent = `${username} (${role})`;
+      renderMenu();
+      showStock();
+    }
+
+    function logout() {
+      token = ''; role = '';
+      document.getElementById('user-info').textContent = '未登录';
+      document.getElementById('menu').innerHTML = '';
+      setContent(`<div class="card"><h3>登录</h3><div class="row">
+        <input id="login-username" placeholder="用户名，如 admin/lab/stu">
+        <input id="login-password" placeholder="密码" type="password" value="123456">
+        <button class="btn" id="btn-login">登录</button>
+      </div></div>`);
+      bindLogin();
+    }
+
+    function renderMenu() {
+      const m = document.getElementById('menu');
+      m.innerHTML = '';
+      menuItems.filter(i => role && i.roles.includes(role)).forEach(i => {
+        const btn = document.createElement('button');
+        btn.textContent = i.label;
+        btn.onclick = () => {
+          m.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (i.key === 'categories') showCategories();
+          if (i.key === 'materials') showMaterials();
+          if (i.key === 'inbound') showInbound();
+          if (i.key === 'stock') showStock();
+          if (i.key === 'requests') showRequests();
+          if (i.key === 'myRequests') showMyRequests();
+          if (i.key === 'export') showExport();
+        };
+        m.appendChild(btn);
+      });
+    }
+
+    async function showCategories() {
+      const data = await api('/api/categories');
+      setContent(`<div class="card">
+        <div class="flex-between"><h3>类目</h3><button class="btn secondary" id="cat-add">新增</button></div>
+        <table><thead><tr><th>ID</th><th>名称</th><th>父级</th><th>安全库存</th><th>单位</th><th>操作</th></tr></thead>
+        <tbody>${data.map(r=>`<tr>
+          <td>${r.id}</td><td>${r.name}</td><td>${r.parent_id||''}</td><td>${r.safe_stock||''}</td><td>${r.unit||''}</td>
+          <td><button data-id="${r.id}" class="cat-edit">编辑</button><button data-id="${r.id}" class="cat-del">删除</button></td>
+        </tr>`).join('')}</tbody></table>
+      </div>`);
+      document.querySelectorAll('.cat-del').forEach(btn=>{
+        btn.onclick = async ()=>{ await api('/api/categories/'+btn.dataset.id,{method:'DELETE'}); showCategories(); };
+      });
+      document.getElementById('cat-add').onclick = ()=>editCategory();
+      document.querySelectorAll('.cat-edit').forEach(btn=>{
+        btn.onclick = ()=>editCategory(btn.dataset.id, data.find(d=>d.id==btn.dataset.id));
+      });
+    }
+
+    function editCategory(id, row={}) {
+      setContent(`<div class="card"><h3>${id?'编辑':'新增'}类目</h3>
+        <div class="row">
+          <input id="c-name" placeholder="名称" value="${row.name||''}">
+          <input id="c-parent" placeholder="父ID" value="${row.parent_id||''}">
+          <input id="c-safe" placeholder="安全库存" value="${row.safe_stock||''}">
+          <input id="c-unit" placeholder="单位" value="${row.unit||''}">
+          <button class="btn" id="c-save">保存</button>
+        </div></div>`);
+      document.getElementById('c-save').onclick = async()=>{
+        const payload={
+          name:document.getElementById('c-name').value,
+          parentId:Number(document.getElementById('c-parent').value)||null,
+          safeStock:Number(document.getElementById('c-safe').value)||0,
+          unit:document.getElementById('c-unit').value
+        };
+        await api('/api/categories'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(payload)});
+        showCategories();
+      };
+    }
+
+    async function showMaterials() {
+      const data = await api('/api/materials');
+      setContent(`<div class="card">
+        <div class="flex-between"><h3>材料</h3><button class="btn secondary" id="mat-add">新增</button></div>
+        <table><thead><tr><th>ID</th><th>品牌</th><th>型号</th><th>规格</th><th>单价</th><th>币种</th><th>操作</th></tr></thead>
+        <tbody>${data.map(r=>`<tr>
+          <td>${r.id}</td><td>${r.brand}</td><td>${r.model}</td><td>${r.spec||''}</td><td>${r.unit_price||''}</td><td>${r.currency||''}</td>
+          <td><button data-id="${r.id}" class="mat-edit">编辑</button><button data-id="${r.id}" class="mat-del">删除</button></td>
+        </tr>`).join('')}</tbody></table>
+      </div>`);
+      document.getElementById('mat-add').onclick = ()=>editMaterial();
+      document.querySelectorAll('.mat-edit').forEach(btn=>btn.onclick=()=>editMaterial(btn.dataset.id, data.find(d=>d.id==btn.dataset.id)));
+      document.querySelectorAll('.mat-del').forEach(btn=>btn.onclick=async()=>{await api('/api/materials/'+btn.dataset.id,{method:'DELETE'});showMaterials();});
+    }
+    function editMaterial(id,row={}) {
+      setContent(`<div class="card"><h3>${id?'编辑':'新增'}材料</h3>
+        <div class="row">
+          <input id="m-cat" placeholder="类目ID" value="${row.category_id||''}">
+          <input id="m-brand" placeholder="品牌" value="${row.brand||''}">
+          <input id="m-model" placeholder="型号" value="${row.model||''}">
+          <input id="m-spec" placeholder="规格" value="${row.spec||''}">
+          <input id="m-price" placeholder="单价" value="${row.unit_price||''}">
+          <input id="m-curr" placeholder="币种" value="${row.currency||'CNY'}">
+          <button class="btn" id="m-save">保存</button>
+        </div></div>`);
+      document.getElementById('m-save').onclick=async()=>{
+        const payload={
+          categoryId:Number(document.getElementById('m-cat').value),
+          brand:document.getElementById('m-brand').value,
+          model:document.getElementById('m-model').value,
+          spec:document.getElementById('m-spec').value,
+          unitPrice:Number(document.getElementById('m-price').value)||0,
+          currency:document.getElementById('m-curr').value||'CNY'
+        };
+        await api('/api/materials'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify(payload)});
+        showMaterials();
+      };
+    }
+
+    async function showInbound() {
+      setContent(`<div class="card"><h3>入库</h3>
+        <div class="row">
+          <input id="in-item" placeholder="材料ID">
+          <input id="in-qty" type="number" placeholder="数量">
+          <input id="in-batch" placeholder="批次号(可空自动)">
+          <input id="in-barcode" placeholder="条码(可空)">
+          <input id="in-expire" placeholder="到期日 YYYY-MM-DD">
+          <button class="btn" id="in-save">提交</button>
+        </div>
+      </div>`);
+      document.getElementById('in-save').onclick = async ()=>{
+        const payload={
+          itemId:Number(document.getElementById('in-item').value),
+          quantity:Number(document.getElementById('in-qty').value),
+          batchCode:document.getElementById('in-batch').value,
+          barcode:document.getElementById('in-barcode').value,
+          expireDate:document.getElementById('in-expire').value
+        };
+        await api('/api/inbound',{method:'POST',body:JSON.stringify(payload)});
+        notice('入库成功');
+      };
+    }
+
+    async function showStock() {
+      const data = await api('/api/stock');
+      setContent(`<div class="card"><h3>库存</h3>
+        <table><thead><tr><th>ID</th><th>品牌/型号</th><th>规格</th><th>库存</th><th>单价</th><th>币种</th></tr></thead>
+        <tbody>${data.map(r=>`<tr>
+          <td>${r.id}</td><td>${r.brand} ${r.model}</td><td>${r.spec||''}</td><td>${r.quantity}</td><td>${r.unit_price||''}</td><td>${r.currency||''}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>`);
+    }
+
+    async function showRequests() {
+      const data = await api('/api/requests');
+      setContent(`<div class="card"><h3>领用审核</h3>
+        <table><thead><tr><th>ID</th><th>材料</th><th>数量</th><th>用途</th><th>项目号</th><th>状态</th><th>学生</th><th>操作</th></tr></thead>
+        <tbody>${data.map(r=>`<tr>
+          <td>${r.id}</td><td>${r.brand} ${r.model}</td><td>${r.qty}</td><td>${r.purpose||''}</td><td>${r.project_no||''}</td>
+          <td><span class="tag ${r.status}">${r.status}</span></td><td>${r.student}</td>
+          <td>${r.status==='pending'
+            ? `<button class="req-approve" data-id="${r.id}">通过</button><button class="req-reject" data-id="${r.id}">拒绝</button>`
+            : ''}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>`);
+      document.querySelectorAll('.req-approve').forEach(btn=>btn.onclick=()=>processRequest(btn.dataset.id,true));
+      document.querySelectorAll('.req-reject').forEach(btn=>btn.onclick=()=>processRequest(btn.dataset.id,false));
+    }
+
+    async function processRequest(id, approve) {
+      const comment = prompt('请输入意见','ok');
+      if (comment===null) return;
+      await api(`/api/requests/${id}/${approve?'approve':'reject'}`,{
+        method:'POST',body:JSON.stringify({comment})
+      });
+      showRequests();
+    }
+
+    async function showMyRequests() {
+      const data = await api('/api/requests/my');
+      setContent(`<div class="card"><h3>我的领用</h3>
+        <div class="row">
+          <input id="rq-item" placeholder="材料ID">
+          <input id="rq-qty" type="number" placeholder="数量">
+          <input id="rq-purpose" placeholder="用途">
+          <input id="rq-project" placeholder="项目号">
+          <button class="btn" id="rq-save">提交申请</button>
+        </div>
+        <table><thead><tr><th>ID</th><th>材料</th><th>数量</th><th>用途</th><th>项目号</th><th>状态</th></tr></thead>
+        <tbody>${data.map(r=>`<tr>
+          <td>${r.id}</td><td>${r.brand} ${r.model}</td><td>${r.qty}</td><td>${r.purpose||''}</td><td>${r.project_no||''}</td>
+          <td><span class="tag ${r.status}">${r.status}</span></td>
+        </tr>`).join('')}</tbody></table>
+      </div>`);
+      document.getElementById('rq-save').onclick = async ()=>{
+        const payload={
+          itemId:Number(document.getElementById('rq-item').value),
+          quantity:Number(document.getElementById('rq-qty').value),
+          purpose:document.getElementById('rq-purpose').value,
+          projectNo:document.getElementById('rq-project').value
+        };
+        await api('/api/requests',{method:'POST',body:JSON.stringify(payload)});
+        showMyRequests();
+      };
+    }
+
+    function showExport() {
+      setContent(`<div class="card"><h3>导出</h3>
+        <div class="row">
+          <button class="btn" id="exp-req">导出领用明细 CSV</button>
+          <button class="btn secondary" id="exp-stock">导出库存 CSV</button>
+        </div>
+      </div>`);
+      document.getElementById('exp-req').onclick=()=>window.open('/api/export/requests','_blank');
+      document.getElementById('exp-stock').onclick=()=>window.open('/api/export/stock','_blank');
+    }
+
+    function bindLogin() {
+      document.getElementById('btn-login').onclick = login;
+    }
+    document.getElementById('btn-logout').onclick = logout;
+    bindLogin();
+  </script>
+</body>
+</html>

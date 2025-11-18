@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smart_materials
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  backend:
+    build: ../backend
+    depends_on:
+      - postgres
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/smart_materials
+      DB_USER: postgres
+      DB_PASS: postgres
+      JWT_SECRET: ZmFrZS1kZXYtc2VjcmV0LWtleS1mb3ItY291cnNlLXNraW4=
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ../frontend
+    depends_on:
+      - backend
+    ports:
+      - "3001:80"
+
+volumes:
+  pgdata:
